@@ -1,4 +1,4 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 #[cfg(test)]
 mod tests {
@@ -64,6 +64,14 @@ mod tests {
     }
 }"#;
         assert_eq!(serialized, espect);
+    }
+
+    #[test]
+    fn equalize() {
+        let json1: JsonType = r#"{"a": {"b": 1, "c": 2}}"#.into();
+        let json2: JsonType = r#"{"a": {"c": 2, "b": 1}}"#.into();
+        assert_eq!(json1, json2);
+        assert!(json1 == json2);
     }
 }
 

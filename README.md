@@ -69,3 +69,34 @@ let espect = JsonType::Object(object_a);
 assert_eq!(json1, espect);
 ```
 
+get sub item of json
+
+```rust
+use dynamic_json::{JsonType, parse};
+let s = r#"{ "a": { "b": 123, "c": [1, 2, 3] } }"#;
+let json = parse(&s);
+let b = json.get("a.b").unwrap();
+if let JsonType::Number(num) = b {
+    assert_eq!(*num, 123f64);
+} else {
+    panic!("path error");
+}
+
+let value = json.get("a.c.1").unwrap();
+if let JsonType::Number(num) = value {
+    assert_eq!(*num, 2f64);
+} else {
+    panic!("path error");
+}
+```
+
+also you can compare two json
+
+```rust
+// JsonType is derived PartialEq, so we can use assert_eq && ==
+// be careful that number in json is described by f64, sometimes they can not be compared in simple ways.
+let json1: JsonType = r#"{"a": {"b": 1, "c": 2}}"#.into();
+let json2: JsonType = r#"{"a": {"c": 2, "b": 1}}"#.into();
+assert_eq!(json1, json2);
+assert!(json1 == json2);
+```
