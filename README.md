@@ -109,3 +109,20 @@ let json2: JsonType = r#"{"a": {"c": 2, "b": 1}}"#.into();
 assert_eq!(json1, json2);
 assert!(json1 == json2);
 ```
+
+serialize JsonType to string:
+
+```rust
+let json: JsonType = r#"{"a": {"b": 1, "c": 2}}"#.into();
+
+let serialized = json.serialize();
+// {"a":{"c":2,"b":1}}
+
+let prettied_serialized = json.pretty_serialize(2);
+// {
+//   "a": {
+//     "c": 2,
+//     "b": 1
+//   }
+// }
+```
