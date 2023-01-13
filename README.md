@@ -135,3 +135,29 @@ let prettied_serialized = json.pretty_serialize(2);
 //   }
 // }
 ```
+
+convert other types to json:
+
+```rust
+// JsonType is implemented many FromIterator<T> trait, so you can convert collection types to json
+let arr = vec![1.0, 2.0, 3.0, 4.0];
+let json_arr: JsonType = arr.iter().collect();
+let espect = JsonType::Array(vec![
+    JsonType::Number(1.0),
+    JsonType::Number(2.0),
+    JsonType::Number(3.0),
+    JsonType::Number(4.0),
+]);
+assert_eq!(json_arr, espect);
+
+let mut hm = HashMap::new();
+hm.insert("a", 1);
+hm.insert("b", 2);
+let json_obj: JsonType = hm.into_iter().collect();
+
+let mut json_hm = HashMap::new();
+json_hm.insert("a".to_string(), JsonType::Number(1.0));
+json_hm.insert("b".to_string(), JsonType::Number(2.0));
+let espect = JsonType::Object(json_hm);
+assert_eq!(json_obj, espect);
+```

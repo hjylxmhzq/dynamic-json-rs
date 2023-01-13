@@ -9,10 +9,7 @@ mod tests {
         let s = r#"{ "a" : 123, "b": false }"#;
         let json = parse(&s);
 
-        let keys = vec![
-            String::from("a"),
-            String::from("b"),
-        ];
+        let keys = vec![String::from("a"), String::from("b")];
         let values = vec![JsonType::Number(123f64), JsonType::Bool(false)];
 
         let hm = keys.into_iter().zip(values).collect();
@@ -71,6 +68,30 @@ mod tests {
         let json2: JsonType = r#"{"a": {"c": 2, "b": 1}}"#.into();
         assert_eq!(json1, json2);
         assert!(json1 == json2);
+    }
+
+    #[test]
+    fn convert() {
+        let arr = vec![1.0, 2.0, 3.0, 4.0];
+        let json_arr: JsonType = arr.iter().collect();
+        let espect = JsonType::Array(vec![
+            JsonType::Number(1.0),
+            JsonType::Number(2.0),
+            JsonType::Number(3.0),
+            JsonType::Number(4.0),
+        ]);
+        assert_eq!(json_arr, espect);
+
+        let mut hm = HashMap::new();
+        hm.insert("a", 1);
+        hm.insert("b", 2);
+        let json_obj: JsonType = hm.into_iter().collect();
+
+        let mut json_hm = HashMap::new();
+        json_hm.insert("a".to_string(), JsonType::Number(1.0));
+        json_hm.insert("b".to_string(), JsonType::Number(2.0));
+        let espect = JsonType::Object(json_hm);
+        assert_eq!(json_obj, espect);
     }
 }
 
@@ -144,6 +165,93 @@ impl From<String> for JsonType {
         parse(&s)
     }
 }
+
+macro_rules! impl_from_iter_to_array {
+    ($t:ident, $y:ident) => {
+        impl FromIterator<$t> for JsonType {
+            fn from_iter<T: IntoIterator<Item = $t>>(iter: T) -> Self {
+                let mut arr = vec![];
+                for num in iter {
+                    arr.push(JsonType::$y(num.try_into().unwrap()));
+                }
+                JsonType::Array(arr)
+            }
+        }
+    };
+}
+
+macro_rules! impl_from_ref_iter_to_array {
+    ($t:ident, $y:ident) => {
+        impl<'a> FromIterator<&'a $t> for JsonType {
+            fn from_iter<T: IntoIterator<Item = &'a $t>>(iter: T) -> Self {
+                let mut arr = vec![];
+                for num in iter {
+                    arr.push(JsonType::$y(f64::from(*num)));
+                }
+                JsonType::Array(arr)
+            }
+        }
+    };
+}
+
+impl_from_iter_to_array!(i32, Number);
+impl_from_iter_to_array!(f32, Number);
+impl_from_iter_to_array!(f64, Number);
+impl_from_iter_to_array!(bool, Bool);
+impl_from_iter_to_array!(String, String);
+impl_from_ref_iter_to_array!(i32, Number);
+impl_from_ref_iter_to_array!(f32, Number);
+impl_from_ref_iter_to_array!(f64, Number);
+
+impl FromIterator<(String, JsonType)> for JsonType {
+    fn from_iter<T: IntoIterator<Item = (String, JsonType)>>(iter: T) -> Self {
+        let mut obj = HashMap::new();
+        for item in iter {
+            obj.insert(item.0, item.1);
+        }
+        JsonType::Object(obj)
+    }
+}
+
+impl<'a> FromIterator<(&'a str, JsonType)> for JsonType {
+    fn from_iter<T: IntoIterator<Item = (&'a str, JsonType)>>(iter: T) -> Self {
+        let mut obj = HashMap::new();
+        for item in iter {
+            obj.insert(item.0.to_string(), item.1);
+        }
+        JsonType::Object(obj)
+    }
+}
+
+macro_rules! impl_from_iter_to_object {
+    ($t:ident, $y:ident) => {
+        impl FromIterator<(String, $t)> for JsonType {
+            fn from_iter<T: IntoIterator<Item = (String, $t)>>(iter: T) -> Self {
+                let mut obj = HashMap::new();
+                for item in iter {
+                    obj.insert(item.0, JsonType::$y(item.1.try_into().unwrap()));
+                }
+                JsonType::Object(obj)
+            }
+        }
+
+        impl<'a> FromIterator<(&'a str, $t)> for JsonType {
+            fn from_iter<T: IntoIterator<Item = (&'a str, $t)>>(iter: T) -> Self {
+                let mut obj = HashMap::new();
+                for item in iter {
+                    obj.insert(item.0.to_string(), JsonType::$y(item.1.try_into().unwrap()));
+                }
+                JsonType::Object(obj)
+            }
+        }
+    };
+}
+
+impl_from_iter_to_object!(i32, Number);
+impl_from_iter_to_object!(f32, Number);
+impl_from_iter_to_object!(f64, Number);
+impl_from_iter_to_object!(bool, Bool);
+impl_from_iter_to_object!(String, String);
 
 impl ToString for JsonType {
     fn to_string(&self) -> String {
@@ -242,9 +350,7 @@ pub fn serialize(json: &JsonType, indent: u32, acc_indent: u32) -> String {
         JsonType::String(s) => {
             format!(r#""{}""#, s)
         }
-        JsonType::Bool(boolean) => {
-            boolean.to_string()
-        }
+        JsonType::Bool(boolean) => boolean.to_string(),
         JsonType::Object(obj) => {
             let mut items: Vec<String> = vec![];
             for (key, value) in obj {
