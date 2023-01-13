@@ -38,7 +38,11 @@ define a json array:
 ```rust
 # use std::collections::HashMap;
 # use dynamic_json::JsonType;
-let arr = vec![JsonType::Number(100f64), JsonType::Null, JsonType::String("this is a string".to_string())];
+let arr = vec![
+  JsonType::Number(100f64),
+  JsonType::Null,
+  JsonType::String("this is a string".to_string()),
+];
 let json = JsonType::Array(arr);
 // json: [100, null, "this is a string"]
 ```
@@ -65,7 +69,12 @@ let object_b = vec!["b".to_string()]
     .collect::<HashMap<String, JsonType>>();
 // { "b": 3 }
 
-let arr_a = vec![JsonType::Number(1f64), JsonType::Number(2f64), JsonType::Null, JsonType::Object(object_b)];
+let arr_a = vec![
+  JsonType::Number(1f64),
+  JsonType::Number(2f64),
+  JsonType::Null,
+  JsonType::Object(object_b),
+];
 // [1, 2, null, { "b": 3 }]
 
 let object_a = vec!["a".to_string()]
