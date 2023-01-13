@@ -36,8 +36,8 @@ pub enum JsonType {
 define a json array:
 
 ```rust
-# use std::collections::HashMap;
-# use dynamic_json::JsonType;
+use std::collections::HashMap;
+use dynamic_json::JsonType;
 let arr = vec![
   JsonType::Number(100f64),
   JsonType::Null,
@@ -50,8 +50,8 @@ let json = JsonType::Array(arr);
 parse string to JsonType:
 
 ```rust
-# use std::collections::HashMap;
-# use dynamic_json::{JsonType, parse};
+use std::collections::HashMap;
+use dynamic_json::{JsonType, parse};
 let json_str = r#"{ "a": [1, 2, null, { "b": 3 }] }"#;
 
 // use parse() function
