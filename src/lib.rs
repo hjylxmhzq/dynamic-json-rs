@@ -6,18 +6,17 @@ mod tests {
 
     #[test]
     fn parse_json() {
-        let s = r#"{ "a" : 123 }"#;
+        let s = r#"{ "a" : 123, "b": false }"#;
         let json = parse(&s);
 
-        let key: String = "a".into();
-        let value = 123f64;
+        let keys = vec![
+            String::from("a"),
+            String::from("b"),
+        ];
+        let values = vec![JsonType::Number(123f64), JsonType::Bool(false)];
 
-        let hm = vec![key]
-            .into_iter()
-            .zip(vec![JsonType::Number(value)])
-            .collect::<HashMap<_, _>>();
+        let hm = keys.into_iter().zip(values).collect();
         let espect = JsonType::Object(hm);
-
         assert_eq!(json, espect);
     }
 
@@ -129,6 +128,7 @@ pub enum JsonType {
     Object(HashMap<String, JsonType>),
     Array(Vec<JsonType>),
     Null,
+    Bool(bool),
     Number(f64),
     String(String),
 }
@@ -242,6 +242,9 @@ pub fn serialize(json: &JsonType, indent: u32, acc_indent: u32) -> String {
         JsonType::String(s) => {
             format!(r#""{}""#, s)
         }
+        JsonType::Bool(boolean) => {
+            boolean.to_string()
+        }
         JsonType::Object(obj) => {
             let mut items: Vec<String> = vec![];
             for (key, value) in obj {
@@ -345,10 +348,26 @@ fn dynamic_json(chars: &mut Vec<char>, start: usize) -> (JsonType, usize) {
             return (JsonType::String(s), i);
         }
         'n' => {
-            if is_null(chars, idx) {
+            if match_literal(chars, idx, "null") {
                 idx += 4;
                 skip_spaces(chars, &mut idx);
                 return (JsonType::Null, idx);
+            }
+            parse_error(chars, idx);
+        }
+        't' => {
+            if match_literal(chars, idx, "true") {
+                idx += 4;
+                skip_spaces(chars, &mut idx);
+                return (JsonType::Bool(true), idx);
+            }
+            parse_error(chars, idx);
+        }
+        'f' => {
+            if match_literal(chars, idx, "false") {
+                idx += 5;
+                skip_spaces(chars, &mut idx);
+                return (JsonType::Bool(false), idx);
             }
             parse_error(chars, idx);
         }
@@ -376,9 +395,14 @@ fn is_valid_ending_quote(chars: &Vec<char>, idx: usize) -> bool {
     }
 }
 
-fn is_null(chars: &Vec<char>, idx: usize) -> bool {
-    if idx <= chars.len() - 4 {
-        return chars[idx..idx + 4] == "null".chars().collect::<Vec<char>>();
+fn match_literal(chars: &Vec<char>, idx: usize, literal: &str) -> bool {
+    if idx <= chars.len() - literal.len() {
+        for (i, c) in literal.chars().enumerate() {
+            if chars[idx + i] != c {
+                return false;
+            }
+            return true;
+        }
     }
     return false;
 }
