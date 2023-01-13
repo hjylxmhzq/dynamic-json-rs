@@ -4,7 +4,16 @@ A rust lib for parsing and serializing json with non-predefined schema.
 
 ## usage
 
-use JsonType to create any type of json object
+add dependency in Cargo.toml
+
+```toml
+[dependencies]
+dynamic_json = { git = "https://github.com/hjylxmhzq/dynamic-json-rs.git" }
+```
+
+## samples
+
+use JsonType to create any type of json object:
 
 ```rust
 use std::collections::HashMap;
@@ -69,7 +78,7 @@ let espect = JsonType::Object(object_a);
 assert_eq!(json1, espect);
 ```
 
-get sub item of json
+get sub item of json:
 
 ```rust
 use dynamic_json::{JsonType, parse};
@@ -90,7 +99,7 @@ if let JsonType::Number(num) = value {
 }
 ```
 
-also you can compare two json
+also you can compare two json:
 
 ```rust
 // JsonType is derived PartialEq, so we can use assert_eq && ==
