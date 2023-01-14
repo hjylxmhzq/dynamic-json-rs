@@ -1,8 +1,14 @@
 mod convert;
-mod utils;
 mod macros;
+mod utils;
 
-use std::{collections::{hash_map::{IntoIter, Iter}, HashMap}, ops::Index};
+use std::{
+    collections::{
+        hash_map::{IntoIter, Iter},
+        HashMap,
+    },
+    ops::Index,
+};
 use utils::*;
 
 #[cfg(test)]
@@ -115,6 +121,19 @@ mod tests {
         json_obj.insert("b", 2);
         let espect = JsonType::Object(json_obj);
         assert_eq!(result, espect);
+    }
+
+    #[test]
+    fn iter_json() {
+        let json = json_obj! {
+            "a" => json_arr![1, 2, 3],
+            "b" => json_obj! {
+                "c" => 4
+            }
+        };
+        for (key, value) in json {
+            println!("{}: {}", key, value.serialize());
+        }
     }
 }
 
@@ -242,6 +261,90 @@ impl<'a> IntoIterator for &'a JsonObject {
     type IntoIter = Iter<'a, String, JsonType>;
     fn into_iter(self) -> Self::IntoIter {
         self.inner_map.iter()
+    }
+}
+
+enum InnerMap {
+    Map(HashMap<String, JsonType>),
+    List((Vec<JsonType>, usize)),
+}
+
+pub struct JsonIter {
+    nodes: Vec<InnerMap>,
+}
+
+impl Iterator for JsonIter {
+    type Item = (String, JsonType);
+    fn next(&mut self) -> Option<Self::Item> {
+        let last_node = self.nodes.pop();
+        if let Some(mut n) = last_node {
+            match n {
+                InnerMap::Map(ref mut hm) => {
+                    if hm.is_empty() {
+                        return self.next();
+                    }
+                    let (key, _) = hm.iter().next().unwrap();
+                    let key = key.clone();
+                    let item = hm.remove(&key).unwrap();
+                    match item {
+                        JsonType::Object(ref obj) => {
+                            self.nodes.push(InnerMap::Map(obj.inner_map.clone()));
+                        }
+                        JsonType::Array(ref arr) => {
+                            self.nodes.push(InnerMap::List((arr.clone(), 0)));
+                        }
+                        _ => (),
+                    }
+                    if !hm.is_empty() {
+                        self.nodes.push(n);
+                    }
+                    Some((key, item))
+                }
+                InnerMap::List((ref mut arr, ref mut idx)) => {
+                    if arr.is_empty() {
+                        return self.next();
+                    }
+                    arr.rotate_right(1);
+                    let item = arr.pop().unwrap();
+                    let old_idx = *idx;
+                    *idx += 1;
+                    match item {
+                        JsonType::Object(ref obj) => {
+                            self.nodes.push(InnerMap::Map(obj.inner_map.clone()));
+                        }
+                        JsonType::Array(ref arr) => {
+                            self.nodes.push(InnerMap::List((arr.clone(), 0)));
+                        }
+                        _ => (),
+                    }
+                    if !arr.is_empty() {
+                        self.nodes.push(n);
+                    }
+                    Some((old_idx.to_string(), item))
+                }
+            }
+        } else {
+            None
+        }
+    }
+}
+
+impl IntoIterator for JsonType {
+    type Item = (String, JsonType);
+    type IntoIter = JsonIter;
+    fn into_iter(self) -> Self::IntoIter {
+        let nodes = match self {
+            JsonType::Object(obj) => {
+                vec![InnerMap::Map(obj.inner_map)]
+            }
+            JsonType::Array(arr) => {
+                vec![InnerMap::List((arr, 0))]
+            }
+            _ => vec![]
+        };
+        JsonIter {
+            nodes
+        }
     }
 }
 

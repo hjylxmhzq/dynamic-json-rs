@@ -134,27 +134,28 @@ let prettied_serialized = json.pretty_serialize(2);
 convert other types to json:
 
 ```rust
-// JsonType is implemented many FromIterator<T> trait, so you can convert collection types to json
+use dynamic_json::{JsonType, JsonObject};
+// JsonType is implemented FromIterator<T: Into<JsonType>> trait, so you can convert collection types to json
 let arr = vec![1.0, 2.0, 3.0, 4.0];
-let json_arr: JsonType = arr.iter().collect();
+let json_from_vec: JsonType = arr.iter().collect();
 let espect = JsonType::Array(vec![
     JsonType::Number(1.0),
     JsonType::Number(2.0),
     JsonType::Number(3.0),
     JsonType::Number(4.0),
 ]);
-assert_eq!(json_arr, espect);
+assert_eq!(json_from_vec, espect);
 
 let mut hm = HashMap::new();
 hm.insert("a", 1);
 hm.insert("b", 2);
-let json_obj: JsonType = hm.into_iter().collect();
+let json_from_hashmap: JsonType = hm.into_iter().collect();
 
-let mut json_hm = HashMap::new();
-json_hm.insert("a".to_string(), JsonType::Number(1.0));
-json_hm.insert("b".to_string(), JsonType::Number(2.0));
-let espect = JsonType::Object(json_hm);
-assert_eq!(json_obj, espect);
+let mut inner_obj = JsonObject::new();
+inner_obj.insert("a", 1));
+inner_obj.insert("b", 2));
+let espect = JsonType::Object(inner_obj);
+assert_eq!(json_from_hashmap, espect);
 
 let json_string: JsonType = "abc".into();
 assert(JsonType::String("abc".to_string()), json_string);
@@ -190,4 +191,24 @@ let json: JsonType = json_obj! {
 };
 let value2 = json.get("nested.obj_array.1.key2").unwrap();
 assert_eq!(*value2, JsonType::from("value2"));
+```
+
+loop through json object via iteration:
+
+```rust
+let json = json_obj! {
+    "a" => json_arr![1, 2, 3],
+    "b" => json_obj! {
+        "c" => 4
+    }
+};
+for (key, value) in json {
+    println!("> {}: {}", key, value.serialize());
+}
+// > b: {"c":4}
+// > a: [1,2,3]
+// > 0: 2
+// > 1: 3
+// > 2: 1
+// > c: 4
 ```
