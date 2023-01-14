@@ -164,7 +164,8 @@ assert(JsonType::Bool(true), json_bool);
 if you want to create a json object with complex stucture, some macros will help you
 
 ```rust
-use dynamic_json::*;
+use dynamic_json::{JsonType, json_arr, json_obj, json_null};
+
 let json: JsonType = json_obj! {
     "a" => 123,
     "b" => "this is a string",
