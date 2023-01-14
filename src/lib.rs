@@ -2,7 +2,7 @@ mod convert;
 mod utils;
 mod macros;
 
-use std::collections::{hash_map::{IntoIter, Iter}, HashMap};
+use std::{collections::{hash_map::{IntoIter, Iter}, HashMap}, ops::Index};
 use utils::*;
 
 #[cfg(test)]
@@ -33,6 +33,25 @@ mod tests {
         }
 
         let value = json.get("a.c.1").unwrap();
+        if let JsonType::Number(num) = value {
+            assert_eq!(*num, 2f64);
+        } else {
+            panic!("get path error");
+        }
+    }
+
+    #[test]
+    fn index_path() {
+        let s = r#"{ "a": { "b": 123, "c": [1, 2, 3] } }"#;
+        let json = parse(&s);
+        let b = &json["a"]["b"];
+        if let JsonType::Number(num) = b {
+            assert_eq!(*num, 123f64);
+        } else {
+            panic!("get path error");
+        }
+
+        let value = &json["a"]["c"][1];
         if let JsonType::Number(num) = value {
             assert_eq!(*num, 2f64);
         } else {
@@ -154,6 +173,28 @@ pub enum JsonType {
     Bool(bool),
     Number(f64),
     String(String),
+}
+
+impl Index<&str> for JsonType {
+    type Output = JsonType;
+    fn index(&self, index: &str) -> &Self::Output {
+        if let JsonType::Object(obj) = self {
+            obj.get(index).unwrap()
+        } else {
+            panic!("can not index by {}", index);
+        }
+    }
+}
+
+impl Index<usize> for JsonType {
+    type Output = JsonType;
+    fn index(&self, index: usize) -> &Self::Output {
+        if let JsonType::Array(arr) = self {
+            &arr[index]
+        } else {
+            panic!("can not index by {}", index);
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]

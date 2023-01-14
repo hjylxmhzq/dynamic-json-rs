@@ -87,6 +87,7 @@ use dynamic_json::{JsonType, parse};
 let s = r#"{ "a": { "b": 123, "c": [1, 2, 3] } }"#;
 let json = parse(&s);
 let b = json.get("a.b").unwrap();
+// or let b = &json["a"]["b"];
 if let JsonType::Number(num) = b {
     assert_eq!(*num, 123f64);
 } else {
@@ -94,6 +95,7 @@ if let JsonType::Number(num) = b {
 }
 
 let value = json.get("a.c.1").unwrap();
+// or let value = &json["a"]["c"][1];
 if let JsonType::Number(num) = value {
     assert_eq!(*num, 2f64);
 } else {
