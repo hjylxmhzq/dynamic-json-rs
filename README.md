@@ -160,3 +160,28 @@ assert(JsonType::Number(100), json_number);
 let json_bool: JsonType = true.into();
 assert(JsonType::Bool(true), json_bool);
 ```
+
+if you want to create a json object with complex stucture, some macros will help you
+
+```rust
+use dynamic_json::*;
+let json: JsonType = json_obj! {
+    "a" => 123,
+    "b" => "this is a string",
+    "c" => true,
+    "d" => json_arr![1, json_null!(), 2],
+    "nested" => json_obj! {
+        "array_len_5_filled_zero" => json_arr![0; 5],
+        "obj_array" => json_arr![
+            json_obj! {
+                "key1" => "value1"
+            },
+            json_obj! {
+                "key2" => "value2"
+            }
+        ]
+    }
+};
+let value2 = json.get("nested.obj_array.1.key2").unwrap();
+assert_eq!(*value2, JsonType::from("value2"));
+```
