@@ -1,4 +1,9 @@
-use std::collections::HashMap;
+mod convert;
+mod utils;
+mod macros;
+
+use std::collections::{hash_map::{IntoIter, Iter}, HashMap};
+use utils::*;
 
 #[cfg(test)]
 mod tests {
@@ -12,8 +17,7 @@ mod tests {
         let keys = vec![String::from("a"), String::from("b")];
         let values = vec![JsonType::Number(123f64), JsonType::Bool(false)];
 
-        let hm = keys.into_iter().zip(values).collect();
-        let espect = JsonType::Object(hm);
+        let espect: JsonType = keys.into_iter().zip(values).collect();
         assert_eq!(json, espect);
     }
 
@@ -64,8 +68,8 @@ mod tests {
 
     #[test]
     fn equalize() {
-        let json1: JsonType = r#"{"a": {"b": 1, "c": 2}}"#.into();
-        let json2: JsonType = r#"{"a": {"c": 2, "b": 1}}"#.into();
+        let json1: JsonType = r#"{"a": {"b": 1, "c": 2}}"#.to_json();
+        let json2: JsonType = r#"{"a": {"c": 2, "b": 1}}"#.to_json();
         assert_eq!(json1, json2);
         assert!(json1 == json2);
     }
@@ -85,13 +89,13 @@ mod tests {
         let mut hm = HashMap::new();
         hm.insert("a", 1);
         hm.insert("b", 2);
-        let json_obj: JsonType = hm.into_iter().collect();
+        let result: JsonType = hm.into_iter().collect();
 
-        let mut json_hm = HashMap::new();
-        json_hm.insert("a".to_string(), JsonType::Number(1.0));
-        json_hm.insert("b".to_string(), JsonType::Number(2.0));
-        let espect = JsonType::Object(json_hm);
-        assert_eq!(json_obj, espect);
+        let mut json_obj = JsonObject::new();
+        json_obj.insert("a", 1);
+        json_obj.insert("b", 2);
+        let espect = JsonType::Object(json_obj);
+        assert_eq!(result, espect);
     }
 }
 
@@ -99,11 +103,10 @@ mod tests {
 ///
 /// define a json object:
 /// ```
-/// use std::collections::HashMap;
-/// use dynamic_json::JsonType;
-/// let mut hm = HashMap::<String, JsonType>::new();
-/// hm.insert("a".to_string(), JsonType::Number(100f64));
-/// let json = JsonType::Object(hm);
+/// use dynamic_json::{JsonType, JsonObject, InsertJsonObject};
+/// let mut json_obj = JsonObject::new();
+/// json_obj.insert("a", 100);
+/// let json = JsonType::Object(json_obj);
 /// // json: { "a": 100 }
 /// ```
 ///
@@ -119,34 +122,33 @@ mod tests {
 /// parse a string to JsonType:
 /// ```
 /// # use std::collections::HashMap;
-/// # use dynamic_json::{JsonType, parse};
+/// # use dynamic_json::{JsonType, parse, ToJson};
 /// let json_str = r#"{ "a": [1, 2, null, { "b": 3 }] }"#;
 /// let json = parse(json_str);
-/// let json1: JsonType = json_str.into();
+/// let json1 = json_str.to_json();
 ///
 /// assert_eq!(json, json1);
 ///
 /// let object_b = vec!["b".to_string()]
 ///     .into_iter()
 ///     .zip(vec![JsonType::Number(3f64)])
-///     .collect::<HashMap<String, JsonType>>();
+///     .collect::<JsonType>();
 /// // { "b": 3 }
 ///
-/// let arr_a = vec![JsonType::Number(1f64), JsonType::Number(2f64), JsonType::Null, JsonType::Object(object_b)];
+/// let arr_a = vec![JsonType::Number(1f64), JsonType::Number(2f64), JsonType::Null, object_b];
 /// // [1, 2, null, { "b": 3 }]
 ///
-/// let object_a = vec!["a".to_string()]
+/// let espect = vec!["a".to_string()]
 ///     .into_iter()
 ///     .zip(vec![JsonType::Array(arr_a)])
-///     .collect::<HashMap<String, JsonType>>();
+///     .collect::<JsonType>();
 /// // { "a": [1, 2, null, { "b": 3 }] }
 ///
-/// let espect = JsonType::Object(object_a);
 /// assert_eq!(json1, espect);
 /// ```
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum JsonType {
-    Object(HashMap<String, JsonType>),
+    Object(JsonObject),
     Array(Vec<JsonType>),
     Null,
     Bool(bool),
@@ -154,108 +156,51 @@ pub enum JsonType {
     String(String),
 }
 
-impl From<&str> for JsonType {
-    fn from(s: &str) -> Self {
-        parse(s)
+#[derive(Debug, PartialEq, Clone)]
+pub struct JsonObject {
+    inner_map: HashMap<String, JsonType>,
+}
+
+pub trait InsertJsonObject<T> {
+    fn insert(&mut self, k: &str, v: T) -> Option<JsonType>;
+}
+
+impl JsonObject {
+    pub fn new() -> Self {
+        JsonObject {
+            inner_map: HashMap::new(),
+        }
+    }
+    pub fn get(&self, k: &str) -> Option<&JsonType> {
+        self.inner_map.get(k)
+    }
+    pub fn remove(&mut self, k: &str) -> Option<JsonType> {
+        self.inner_map.remove(k)
+    }
+    pub fn contains(&self, k: &str) -> bool {
+        self.inner_map.contains_key(k)
     }
 }
 
-impl From<String> for JsonType {
-    fn from(s: String) -> Self {
-        parse(&s)
+impl<T: Into<JsonType>> InsertJsonObject<T> for JsonObject {
+    fn insert(&mut self, k: &str, v: T) -> Option<JsonType> {
+        self.inner_map.insert(k.to_string(), v.into())
     }
 }
 
-macro_rules! impl_from_iter_to_array {
-    ($t:ident, $y:ident) => {
-        impl FromIterator<$t> for JsonType {
-            fn from_iter<T: IntoIterator<Item = $t>>(iter: T) -> Self {
-                let mut arr = vec![];
-                for num in iter {
-                    arr.push(JsonType::$y(num.try_into().unwrap()));
-                }
-                JsonType::Array(arr)
-            }
-        }
-    };
-}
-
-macro_rules! impl_from_ref_iter_to_array {
-    ($t:ident, $y:ident) => {
-        impl<'a> FromIterator<&'a $t> for JsonType {
-            fn from_iter<T: IntoIterator<Item = &'a $t>>(iter: T) -> Self {
-                let mut arr = vec![];
-                for num in iter {
-                    arr.push(JsonType::$y(f64::from(*num)));
-                }
-                JsonType::Array(arr)
-            }
-        }
-    };
-}
-
-impl_from_iter_to_array!(i32, Number);
-impl_from_iter_to_array!(f32, Number);
-impl_from_iter_to_array!(f64, Number);
-impl_from_iter_to_array!(bool, Bool);
-impl_from_iter_to_array!(String, String);
-impl_from_ref_iter_to_array!(i32, Number);
-impl_from_ref_iter_to_array!(f32, Number);
-impl_from_ref_iter_to_array!(f64, Number);
-
-impl FromIterator<(String, JsonType)> for JsonType {
-    fn from_iter<T: IntoIterator<Item = (String, JsonType)>>(iter: T) -> Self {
-        let mut obj = HashMap::new();
-        for item in iter {
-            obj.insert(item.0, item.1);
-        }
-        JsonType::Object(obj)
+impl IntoIterator for JsonObject {
+    type Item = (String, JsonType);
+    type IntoIter = IntoIter<String, JsonType>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.inner_map.into_iter()
     }
 }
 
-impl<'a> FromIterator<(&'a str, JsonType)> for JsonType {
-    fn from_iter<T: IntoIterator<Item = (&'a str, JsonType)>>(iter: T) -> Self {
-        let mut obj = HashMap::new();
-        for item in iter {
-            obj.insert(item.0.to_string(), item.1);
-        }
-        JsonType::Object(obj)
-    }
-}
-
-macro_rules! impl_from_iter_to_object {
-    ($t:ident, $y:ident) => {
-        impl FromIterator<(String, $t)> for JsonType {
-            fn from_iter<T: IntoIterator<Item = (String, $t)>>(iter: T) -> Self {
-                let mut obj = HashMap::new();
-                for item in iter {
-                    obj.insert(item.0, JsonType::$y(item.1.try_into().unwrap()));
-                }
-                JsonType::Object(obj)
-            }
-        }
-
-        impl<'a> FromIterator<(&'a str, $t)> for JsonType {
-            fn from_iter<T: IntoIterator<Item = (&'a str, $t)>>(iter: T) -> Self {
-                let mut obj = HashMap::new();
-                for item in iter {
-                    obj.insert(item.0.to_string(), JsonType::$y(item.1.try_into().unwrap()));
-                }
-                JsonType::Object(obj)
-            }
-        }
-    };
-}
-
-impl_from_iter_to_object!(i32, Number);
-impl_from_iter_to_object!(f32, Number);
-impl_from_iter_to_object!(f64, Number);
-impl_from_iter_to_object!(bool, Bool);
-impl_from_iter_to_object!(String, String);
-
-impl ToString for JsonType {
-    fn to_string(&self) -> String {
-        self.serialize()
+impl<'a> IntoIterator for &'a JsonObject {
+    type Item = (&'a String, &'a JsonType);
+    type IntoIter = Iter<'a, String, JsonType>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.inner_map.iter()
     }
 }
 
@@ -359,7 +304,7 @@ pub fn serialize(json: &JsonType, indent: u32, acc_indent: u32) -> String {
                     wrap,
                     key,
                     gap,
-                    serialize(value, indent, acc_indent + indent),
+                    serialize(&value, indent, acc_indent + indent),
                 ));
             }
 
@@ -380,6 +325,22 @@ pub fn serialize(json: &JsonType, indent: u32, acc_indent: u32) -> String {
     }
 }
 
+pub trait ToJson {
+    fn to_json(&self) -> JsonType;
+}
+
+impl ToJson for String {
+    fn to_json(&self) -> JsonType {
+        parse(self)
+    }
+}
+
+impl ToJson for &str {
+    fn to_json(&self) -> JsonType {
+        parse(*self)
+    }
+}
+
 pub fn parse(s: &str) -> JsonType {
     let mut chars: Vec<char> = s.chars().collect();
     let (json, _) = dynamic_json(&mut chars, 0);
@@ -395,7 +356,7 @@ fn dynamic_json(chars: &mut Vec<char>, start: usize) -> (JsonType, usize) {
 
     match c {
         '{' => {
-            let mut obj = HashMap::new();
+            let mut obj = JsonObject::new();
 
             idx += 1;
 
@@ -415,7 +376,7 @@ fn dynamic_json(chars: &mut Vec<char>, start: usize) -> (JsonType, usize) {
                 idx += 1;
                 let (child, new_idx) = dynamic_json(chars, idx);
                 idx = new_idx;
-                obj.insert(key, child);
+                obj.insert(&key, child);
                 skip_chars(chars, &mut idx, &[' ', '\r', '\n', ',', '"']);
             }
             return (JsonType::Object(obj), idx + 1);
@@ -479,61 +440,4 @@ fn dynamic_json(chars: &mut Vec<char>, start: usize) -> (JsonType, usize) {
         }
         _ => parse_error(chars, idx),
     }
-}
-
-fn is_valid_ending_quote(chars: &Vec<char>, idx: usize) -> bool {
-    if chars[idx] == '"' {
-        if idx == 0 {
-            return false;
-        }
-        let mut is_escaped = false;
-        let mut i = idx - 1;
-        while chars[i] == '\\' {
-            is_escaped = !is_escaped;
-            if i == 0 {
-                break;
-            }
-            i -= 1;
-        }
-        return !is_escaped;
-    } else {
-        return false;
-    }
-}
-
-fn match_literal(chars: &Vec<char>, idx: usize, literal: &str) -> bool {
-    if idx <= chars.len() - literal.len() {
-        for (i, c) in literal.chars().enumerate() {
-            if chars[idx + i] != c {
-                return false;
-            }
-            return true;
-        }
-    }
-    return false;
-}
-
-fn skip_spaces(chars: &Vec<char>, idx: &mut usize) {
-    skip_chars(chars, idx, &[' ', '\r', '\n']);
-}
-
-fn skip_chars(chars: &Vec<char>, idx: &mut usize, to_skip: &[char]) {
-    while *idx < chars.len() && to_skip.contains(&chars[*idx]) {
-        *idx += 1;
-    }
-}
-
-fn skip_util_char(chars: &Vec<char>, idx: &mut usize, util_chars: &[char]) {
-    while *idx < chars.len() && !util_chars.contains(&chars[*idx]) {
-        *idx += 1;
-    }
-}
-
-fn nearby_content(chars: &Vec<char>, idx: usize) -> String {
-    let start = if idx < 50 { 0 } else { idx - 50 };
-    chars[start..=idx].iter().collect::<String>()
-}
-
-fn parse_error(chars: &Vec<char>, idx: usize) -> ! {
-    panic!("{}", nearby_content(chars, idx));
 }

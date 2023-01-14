@@ -16,18 +16,18 @@ dynamic_json = { git = "https://github.com/hjylxmhzq/dynamic-json-rs.git" }
 use JsonType to create any type of json object:
 
 ```rust
-use std::collections::HashMap;
-use dynamic_json::JsonType;
-let mut hm = HashMap::<String, JsonType>::new();
-hm.insert("a".to_string(), JsonType::Number(100f64));
-let json = JsonType::Object(hm);
+use dynamic_json::{JsonType, JsonObject, InsertJsonObject};
+let mut json_obj = JsonObject::new();
+json_obj.insert("a", 100);
+let json = JsonType::Object(json_obj);
 // json: { "a": 100 }
 
 // all JsonType
 pub enum JsonType {
-    Object(HashMap<String, JsonType>),
+    Object(JsonObject),
     Array(Vec<JsonType>),
     Null,
+    Bool(bool),
     Number(f64),
     String(String),
 }
@@ -36,7 +36,6 @@ pub enum JsonType {
 define a json array:
 
 ```rust
-use std::collections::HashMap;
 use dynamic_json::JsonType;
 let arr = vec![
   JsonType::Number(100f64),
@@ -50,37 +49,28 @@ let json = JsonType::Array(arr);
 parse string to JsonType:
 
 ```rust
-use std::collections::HashMap;
-use dynamic_json::{JsonType, parse};
+use dynamic_json::{JsonType, JsonObject, InsertJsonObject, parse};
 let json_str = r#"{ "a": [1, 2, null, { "b": 3 }] }"#;
 
 // use parse() function
 let json = parse(json_str);
 
-// or use into()
-// JsonType also implemented From<&str> and From<String> trait
-let json1: JsonType = json_str.into();
-
-assert_eq!(json, json1);
-
-let object_b = vec!["b".to_string()]
+let object_b: JsonType = vec!["b".to_string()]
     .into_iter()
     .zip(vec![JsonType::Number(3f64)])
-    .collect::<HashMap<String, JsonType>>();
+    .collect();
 // { "b": 3 }
 
 let arr_a = vec![
   JsonType::Number(1f64),
   JsonType::Number(2f64),
   JsonType::Null,
-  JsonType::Object(object_b),
+  object_b,
 ];
 // [1, 2, null, { "b": 3 }]
 
-let object_a = vec!["a".to_string()]
-    .into_iter()
-    .zip(vec![JsonType::Array(arr_a)])
-    .collect::<HashMap<String, JsonType>>();
+let object_a = JsonObject::new();
+object_a.insert("a", JsonType::Array(arr_a));
 // { "a": [1, 2, null, { "b": 3 }] }
 
 let espect = JsonType::Object(object_a);
@@ -160,4 +150,13 @@ json_hm.insert("a".to_string(), JsonType::Number(1.0));
 json_hm.insert("b".to_string(), JsonType::Number(2.0));
 let espect = JsonType::Object(json_hm);
 assert_eq!(json_obj, espect);
+
+let json_string: JsonType = "abc".into();
+assert(JsonType::String("abc".to_string()), json_string);
+
+let json_number: JsonType = 100.into();
+assert(JsonType::Number(100), json_number);
+
+let json_bool: JsonType = true.into();
+assert(JsonType::Bool(true), json_bool);
 ```
