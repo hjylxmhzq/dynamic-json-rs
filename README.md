@@ -49,11 +49,14 @@ let json = JsonType::Array(arr);
 parse string to JsonType:
 
 ```rust
-use dynamic_json::{JsonType, JsonObject, InsertJsonObject, parse};
+use dynamic_json::{JsonType, ToJson, JsonObject, InsertJsonObject, parse};
 let json_str = r#"{ "a": [1, 2, null, { "b": 3 }] }"#;
 
 // use parse() function
 let json = parse(json_str);
+let json1 = json_str.to_json();
+
+assert_eq!(json, json1);
 
 let object_b: JsonType = vec!["b".to_string()]
     .into_iter()
