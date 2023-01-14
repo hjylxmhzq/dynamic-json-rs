@@ -106,18 +106,18 @@ if let JsonType::Number(num) = value {
 also you can compare two json:
 
 ```rust
-// JsonType is derived PartialEq, so we can use assert_eq && ==
+// JsonType is derived PartialEq, so we can use assert_eq and ==
 // be careful that number in json is described by f64, sometimes they can not be compared in simple ways.
-let json1: JsonType = r#"{"a": {"b": 1, "c": 2}}"#.into();
-let json2: JsonType = r#"{"a": {"c": 2, "b": 1}}"#.into();
+use dynamic_json::{JsonType, ToJson};
+let json1: JsonType = r#"{"a": {"b": 1, "c": 2}}"#.to_json();
+let json2: JsonType = r#"{"a": {"c": 2, "b": 1}}"#.to_json();
 assert_eq!(json1, json2);
-assert!(json1 == json2);
 ```
 
 serialize JsonType to string:
 
 ```rust
-let json: JsonType = r#"{"a": {"b": 1, "c": 2}}"#.into();
+let json: JsonType = r#"{"a": {"b": 1, "c": 2}}"#.to_json();
 
 let serialized = json.serialize();
 // {"a":{"c":2,"b":1}}
